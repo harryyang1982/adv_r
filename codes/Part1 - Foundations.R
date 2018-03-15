@@ -552,3 +552,161 @@ setdiff(union(x2, y2), intersect(x2, y2))
 
 ### 3.4.9 Exercises
 
+# 4. Vocabularies
+
+## 4.1 The basics
+
+str
+all.equal
+?ceiling
+?sign
+?trunc
+round(.5 + -2:4)
+x1 <- seq(-2, 4, by = .5)
+x1[trunc(x1) != floor(x1)]
+?signif
+signif(x1)
+?prod
+prod(x1)
+prod(1:7)
+?missing
+?on.exit
+?xor
+?diag
+?sweep
+?data.matrix
+?rep_len
+?seq_len
+?rev
+?choose
+choose(36, 2)
+
+?lapply
+?vapply
+
+## 4.2 Common data structures
+
+?ISOdate
+?ISOdatetime
+?strftime
+?strptime
+?difftime
+?julian
+
+?grep
+?agrepl
+?chartr
+?nchar
+?substr
+?nlevels
+?findInterval
+?interaction
+options(stringAsFactors = F)
+
+?array
+?dimnames
+?aperm
+
+## 4.3 Statistics
+
+# Ordering and tabulating
+?duplicated
+?rank
+?ftable
+
+# Linear Models
+?fitted
+?resid
+?rstandard
+?hat
+?df
+?logLik
+?I
+?confint
+?vcov
+?contrasts
+
+# Miscellaneous tests
+?apropos("\\.test$")
+
+# Random variables
+# (q, p, d, r) * (beta, binom, cauchy, chisq, exp, f, gamma, geom, hyper, lnorm, logis, multinom, nbinom, norm, pois, signrank, t, unif, weibull, wilcox, birthday, tukey)
+
+# Matrix algebra
+?crossprod
+?tcrossprod
+?eigen
+?qr
+?svd
+# %*% %o% outer
+?rcond
+?solve
+
+## 4.4 Working with R
+
+# Workspace
+?ls
+?exists
+?rm
+?getwd
+?setwd
+?q
+?source
+?require
+
+# Help
+?help.search
+?apropos
+?RSiteSearch
+?citation
+?demo
+
+# Debugging
+?traceback
+?browser
+?recover
+?tryCatch
+?try
+
+## 4.5 I/O
+
+# output
+?print
+?cat
+?message
+?dput
+?sink
+?format
+?capture.output
+
+# Reading and writing data
+?data
+?count.fields
+?read.delim
+?write.delim
+?read.fwf
+?readLines
+?writeLines
+?readRDS
+?saveRDS
+?save
+
+# Files and directories
+?dir
+?basename
+?dirname
+?tools::file_ext
+?file.path
+?path.expand
+?normalizePath
+?file.choose
+?file.copy
+?file.create
+?file.remove
+?file.rename
+?dir.create
+?file.exists
+?file.info
+?tempdir
+?tempfile
+?download.file
