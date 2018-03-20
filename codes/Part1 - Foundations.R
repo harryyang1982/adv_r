@@ -710,3 +710,223 @@ options(stringAsFactors = F)
 ?tempdir
 ?tempfile
 ?download.file
+
+#5 Style guide
+
+## 5.1 Notation and naming
+### 5.1.1 File names
+
+# Good
+# fit-models.R
+# utility-functions.R
+
+## 5.1.2 Object names
+
+# Good
+# day_one
+# day_one
+
+# Bad
+# first_day_of_the_month
+# DayOne
+# dayone
+# djm1
+
+## 5.2 Syntax
+### 5.2.1 Spacing
+
+# Good
+# average <- mean(feet / 12 + inches, na.rm = T)
+# Bad
+# average<-mean(feet/12+inches,na.rm=T)
+
+# Good
+# if (debug) do(x)
+# plot(x, y)
+
+# Bad
+# if(debug)do(x)
+# plot (x, y)
+
+### 5.2.2 Curly braces
+
+# Good
+# if (y < 0 && debug) {
+#   message("Y is negative")
+# }
+
+### 5.2.3 Line length
+
+### 5.2.4 Indentation
+
+# long_function_name <- function(a = "a long argument",
+#                                b = "another argument",
+#                                c = "another long argument") {
+#   # As usual code is indented by two spaces.
+# }
+
+### 5.2.5 Assignment
+
+#6 Functions
+
+### quiz
+
+x <- 10
+f1 <- function(x) {
+  function() {
+    x + 10
+  }
+}
+f1(1)()
+
+`+`(1, `*`(2, 3))
+1 + 2 * 3
+
+# mean(, TRUE, x = c(1:10, NA))
+mean(c(1:10, NA), na.rm = F)
+
+f2 <- function(a, b) {
+  a * 10
+}
+f2(10, stop("This is an error!"))
+
+## 6.1 Function components
+
+f <- function(x) x^2
+f
+
+formals(f)
+body(f)
+environment(f)
+
+### 6.1.1 Primitive functions
+
+sum
+formals(sum)
+body(sum)
+environment(sum)
+
+### 6.1.2 Exercises
+
+objs <- mget(ls("package:base"), inherits = TRUE)
+funs <- Filter(is.function, objs)
+
+## 6.2 Lexical scoping
+
+x <- 10
+x
+
+### 6.2.1 Naming masking
+
+f <- function() {
+  x <- 1
+  y <- 2
+  c(x, y)
+}
+f()
+rm(f)
+
+# If a name isn't defined inside a function, R will loook one level up.
+
+x <- 2
+g <- function() {
+  y <- 1
+  c(x, y)
+}
+g()
+rm(x, g)
+
+x <- 1
+h <- function() {
+  y <- 2
+  i <- function() {
+    z <- 3
+    c(x, y, z)
+  }
+  i()
+}
+h()
+
+j <- function(x) {
+  y <- 2
+  function() {
+    c(x, y)
+  }
+}
+k <- j(1)
+k()
+rm(j, k)
+
+### 6.2.2 Functions vs. variables
+
+l <- function(x) x + 1
+m <- function() {
+  l <- function(x) x * 2
+  l(10)
+}
+m()
+rm(l, m)
+
+n <- function(x) x / 2
+o <- function() {
+  n <- 10
+  n(n)
+}
+o()
+rm(n, o)
+
+### 6.2.3 A fresh start
+
+j <- function() {
+  if (!exists("a")) {
+    a <- 1
+  } else {
+    a <- a + 1
+  }
+  print(a)
+}
+j()
+rm(j)
+
+### 6.2.4 Dynamic lookup
+
+f <- function() x
+x <- 15
+f()
+
+x <- 20
+f()
+
+f <- function() x + 1
+codetools::findGlobals(f)
+
+environment(f) <- emptyenv()
+f()
+
+`(` <- function(e1) {
+  if (is.numeric(e1) && runif(1) < 0.1) {
+    e1 + 1
+  } else {
+    e1
+  }
+}
+replicate(50, (1 + 2))
+rm("(")
+
+### 6.2.5 Exercises
+
+c <- 10
+c(c = c)
+
+f <- function(x) {
+  f <- function(x) {
+    f <- function(x) {
+      x ^ 2
+    }
+    f(x) + 1
+  } 
+  f(x) * 2
+}
+f(10)
+
+## 6.3 Every operation is a function call
