@@ -886,6 +886,7 @@ j <- function() {
   print(a)
 }
 j()
+
 rm(j)
 
 ### 6.2.4 Dynamic lookup
@@ -930,3 +931,369 @@ f <- function(x) {
 f(10)
 
 ## 6.3 Every operation is a function call
+
+x <- 10; y <- 5
+x + y
+`+`(x, y)
+
+for(i in 1:2) print(i)
+`for`(i, 1:2, print(i))
+if (i == 1) print("yes!") else print("no.")
+`if`(i == 1, print("yes!"), print("no."))
+
+x[3]
+`[`(x, 3)
+
+{ print(1); print(2); print(3) }
+`{`(print(1), print(2), print(3))
+
+add <- function(x, y) x + y
+sapply(1:10, add, 3)
+
+sapply(1:5, `+`, 3)
+sapply(1:5, "+", 3)
+
+sapply(1:10, `+`, 3)
+
+?sapply
+
+x <- list(1:3, 4:9, 10:12)
+sapply(x, "[", 2)
+sapply(x, function(x) x[2])
+
+## 6.4 Function arguments
+
+### 6.4.1 Calling functions
+
+f <- function(abcdef, bcde1, bcde2) {
+  list(a = abcdef, b1 = bcde1, b2 = bcde2)
+}
+
+str(f(1, 2, 3))
+str(f(2, 3, abcdef = 1))
+str(f(2, 3, a = 1))
+str(f(1, 3, b = 1))
+
+mean(1:10)
+mean(1:10, trim = 0.05)
+
+# overkill
+mean(x = 1:10)
+
+# confusing
+mean(1:10, n = T)
+# mean(1:10, , FALSE)
+mean(1:10, 0.05)
+# mean(, TRUE, x = c(1:10, NA))
+
+### 6.4.2 Calling a function given a list of arguments
+
+args <- list(1:10, na.rm = TRUE)
+
+do.call(mean, list(1:10, na.rm = TRUE))
+do.call(mean, args)
+mean(1:10, na.rm = TRUE)
+
+### 6.4.3 Default and missing arguments
+
+f <- function(a = 1, b = 2) {
+  c(a, b)
+}
+f()
+
+g <- function(a = 1, b = a * 2) {
+  c(a, b)
+}
+g()
+g()
+g(10)
+
+h <- function(a = 1, b = d) {
+  d <- (a + 1) ^ 2
+  c(a, b)
+}
+h()
+h(10)
+
+i <- function(a, b) {
+  c(missing(a), missing(b))
+}
+i()
+i(a = 1)
+i(b = 2)
+i(1, 2)
+i(1)
+
+### 6.4.4 Lazy evaluation
+
+f <- function(x) {
+  10
+}
+f(stop("This is an error!"))
+
+# f <- function(x) {
+#   force(x)
+#   10
+# }
+# f(stop("This is an error!"))
+# f()
+
+add <- function(x) {
+  function(y) x + y
+}
+adders <- lapply(1:10, add)
+adders[[1]](10)
+adders[[10]](10)
+
+adders[[1]](1)
+# adders[1](1)
+
+add <- function(x) {
+  force(x)
+  function(y) x + y
+}
+adders2 <- lapply(1:10, add)
+adders2
+adders2[[1]](10)
+adders2[[10]](10)
+
+add <- function(x) {
+  x
+  function(y) x + y
+}
+
+lapply(1:10, add)[[1]](10)
+
+f <- function(x = ls()) {
+  a <- 1
+  x
+}
+f()
+f(ls())
+
+x <- NULL
+if (!is.null(x) && x > 0) {
+  
+}
+
+`&&` <- function(x, y) {
+  if (!x) return(FALSE)
+  if (!y) return(FALSE)
+}
+a <- NULL
+!is.null(a) && a > 0
+
+if (is.null(a)) stop("a is null")
+!is.null(a) || stop("a is null")
+
+### 6.4.5 ...
+
+plot(1:5, col = "red")
+plot(1:5, cex = 5, pch = 20)
+
+plot(1:5, bty = "u")
+plot(1:5, labels = FALSE)
+
+f <- function(...) {
+  names(list(...))
+}
+f(a = 1, b = 2)
+
+sum(1, 2, NA, na.mr = TRUE)
+# sum(1, 2, NA, na.rm = TRUE)
+
+### 6.4.6
+
+# x <- sample(replace = TRUE, 20, x = c(1:10, NA))
+x <- sample(c(1:10, NA), 20, replace = TRUE)
+y <- runif(min = 0, max = 1, 20)
+y <- runif(n = 20, min = 0, max = 1)
+cor(x = x, y = y, method = "k", use = "p")
+
+# 2
+f1 <- function(x = {y <- 1; 2}, y = 0) {
+  x + y
+}
+f1()
+
+
+f2 <- function(x = z) {
+  z <- 100
+  x
+}
+f2()
+
+## 6.5 Special calls
+
+### 6.5.1 Infix functions
+
+`%+%` <- function(a, b) paste0(a, b)
+"new" %+% " string"
+
+"new" %+% " string"
+`%+%`("new", " string") #as same as the above
+
+1 + 5
+
+`+`(1, 5)
+
+`% %` <- function(a, b) paste(a, b)
+`%'%` <- function(a, b) paste(a, b)
+`%/\\%` <- function(a, b) paste(a, b)
+"a" % % "b"
+"a" %'% "b"
+"a" %/\% "b"
+
+`%-%` <- function(a, b) paste0("(", a, " %-% ", b, ")")
+"a" %-% "b" %-% "c"
+
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+# function_that_might_return_null() %||% default value
+
+### 6.5.2 Replacement functions
+
+`second<-` <- function(x, value) {
+  x[2] <- value
+  x
+}
+x <- 1:10
+second(x) <- 5L
+x
+
+library(pryr)
+x <- 1:10
+address(x)
+second(x) <- 6L
+address(x)
+
+x <- 1:10
+address(x)
+x[2] <- 7L
+address(x)
+
+`modify<-` <- function(x, position, value) {
+  x[position] <- value
+  x
+}
+modify(x, 1) <- 10
+x
+
+x <- `modify<-`(x, 1, 10)
+# modify(get("x"), 1) <- 10
+
+# get("x") <- `modify<-`(get("x"), 1, 10)
+
+x <- c(a = 1, b = 2, c = 3)
+names(x)
+names(x)[2] <- "two"
+names(x)
+
+`*tmp*` <- names(x)
+`*tmp*`[2] <- "two"
+names(x) <- `*tmp*`
+
+xor
+
+### 6.5.3 Exercises
+
+# 3
+`% or %` <- function(x, y) {
+  (x | y) & !(x & y)
+}
+x <- sample(1:10, 3, replace = T)
+y <- sample(3:12, 3, replace = T)
+x % or % y
+
+# 4
+intersect
+
+`%it%` <- function(x, y) {
+  y <- as.vector(y)
+  unique(y[match(as.vector(x), y, 0L)])
+}
+
+ggplot2::mpg$hwy %it% ggplot2::mpg$cty
+
+# 5
+
+`modify<-` <- function(x, value) {
+  x[sample(length(x), 1)] <- value
+  x
+}
+
+x <- 1:10
+modify(x) <- 7
+
+## 6.6 Return values
+
+f <- function(x) {
+  if (x < 10) {
+    0
+  } else {
+    10
+  }
+}
+f(5)
+f(15)
+
+f <- function(x, y) {
+  if (!x) return(y)
+  
+  # complicated processing here
+}
+
+f(F, 10)
+
+
+f <- function(x) {
+  x$a <- 2
+  x
+}
+x <- list(a = 1)
+f(x)
+x$a
+
+f1 <- function() 1
+f2 <- function() invisible(1)
+f1()
+f2()
+f1() == 1
+f2() == 1
+
+(f2())
+
+a <- 2
+(a <- 2)
+
+a <- b <- c <- d <- 2
+(a <- (b <- (c <- (d <- 2))))
+
+### 6.6.1 On exit
+
+in_dir <- function(dir, code) {
+  old <- setwd(dir)
+  on.exit(setwd(old))
+  
+  force(code)
+}
+getwd()
+in_dir("~", getwd())
+
+getwd()
+?source()
+
+capture.output
+
+capture.output2 <- function(code) {
+  temp <- tempfile()
+  on.exit(file.remove(temp), add = TRUE)
+  
+  sink(temp)
+  on.exit(sink(), add = TRUE)
+  
+  force(code)
+  readLines(temp)
+}
+
+capture.output2(cat("a", "b", "c", sep = "\n"))
+capture.output(cat("a", "b", "c", sep = "\n"))
