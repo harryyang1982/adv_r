@@ -1297,3 +1297,350 @@ capture.output2 <- function(code) {
 
 capture.output2(cat("a", "b", "c", sep = "\n"))
 capture.output(cat("a", "b", "c", sep = "\n"))
+
+#7 OO field guide
+
+## 7.1 Base types
+
+# closure
+f <- function() {}
+typeof(f)
+
+is.function(f)
+class(f)
+
+# the type of a primitive function is "builtin"
+typeof(sum)
+is.primitive(sum)
+
+is.object(sum) #FALSE because it doesn't have S3, S4 either RC
+
+## 7.2 S3
+
+### 7.2.1 Recognising objects, generic functions, and methods
+
+library(pryr)
+
+df <- data.frame(x = 1:10, y = letters[1:10])
+otype(df) # A data frame is an S3 class
+otype(df$x) # A numeric vector isn't
+otype(df$y) # A factor is
+
+mean
+ftype(mean)
+ftype(sum)
+
+ftype(mean.Date)
+ftype(print)
+ftype(print.factor)
+ftype(t.test)
+ftype(print.data.frame)
+ftype(data.frame)
+ftype(t.data.frame)
+
+methods("mean")
+methods("t.test")
+
+methods(class = "ts")
+
+### 7.2.2 Defining classes and creating objects
+
+# Create and assign class in one step
+foo <- structure(list(), class = "foo")
+
+# Create, then set class
+foo <- list()
+class(foo) <- "foo"
+
+class(foo)
+inherits(foo, "foo") # check where specific class came from
+
+foo <- function(x) {
+  if (!is.numeric(x)) stop("X must be numeric")
+  structure(list(x), class = "foo")
+}
+
+# Create a linear model
+mod <- lm(log(mpg) ~ log(disp), data = mtcars)
+class(mod)
+print(mod)
+
+# Turn it into a data frmae (?!)
+class(mod) <- "data.frame"
+print(mod)
+mod$coefficients
+
+### 7.2.3 Creating new methods and generics
+
+f <- function(x) UseMethod("f")
+f
+
+f.a <- function(x) "Class a"
+a <- structure(list(), class = "a")
+class(a)
+f(a)
+
+mean.a <- function(x) "a"
+mean(a)
+
+# 7.2.4 Method dispatch
+
+f <- function(x) UseMethod("f")
+f.a <- function(x) "Class a"
+f.default <- function(x) "Unknown class"
+f(structure(list(), class = "a"))
+# No method for b class, so uses method for a class
+f(structure(list(), class = c("b", "a")))
+f(structure(list(), class = "c"))
+
+?groupGeneric
+
+c <- structure(list(), class = "c")
+f.default(c)
+
+f.a(c)
+
+iclass <- function(x) {
+  if (is.object(x)) {
+    stop("x is not a primitive type", call. = FALSE)
+  }
+  
+  c(
+    if (is.matrix(x)) "matrix",
+    if (is.array(x) && !is.matrix(x)) "array",
+    if (is.double(x)) "double",
+    if (is.integer(x)) "integer",
+    mode(x)
+  )
+}
+iclass(matrix(1:5))
+iclass(array(1.5))
+
+### 7.2.5 Exercises
+
+# 1
+t <- function(x) UseMethod("t")
+t.test <- function(x) "t.test"
+t.test(structure(c(3, 5), class = "test"))
+
+class(POSIXct)
+
+# 3
+methods(class = "POSIXct")
+methods(class = "POSIXlt")
+
+# 5
+
+y <- 1
+g <- function(x) {
+  y <- 2
+  UseMethod("g")
+}
+g.numeric <- function(x) y
+g(10)
+g(2)
+g(3)
+g(8)
+
+h <- function(x) {
+  x <- 10
+  UseMethod("h")
+}
+h.character <- function(x) paste("char", x)
+h.numeric <- function(x) paste("num", x)
+
+h("a")
+
+# 6
+?"internal generic"
+
+f <- function() 1
+g <- function() 2
+
+class(g) <- "function"
+class(f)
+class(g)
+
+length.function <- function(x) "function"
+length(f)
+length(g)
+
+## 7.3 S4
+
+### 7.3.1 Recognising objects, generic functions, and methods
+
+library(stats4)
+library(pryr)
+
+# From example(mle)
+y <- c(26, 17, 13, 12, 20, 5, 9, 8, 5, 4, 8)
+nLL <- function(lambda) - sum(dpois(y, lambda, log = TRUE))
+fit <- mle(nLL, start = list(lambda = 5), nobs = length(y))
+
+isS4(fit)
+otype(fit)
+
+isS4(nobs)
+ftype(nobs)
+
+# Retrieve an S4 method, described later
+mle_nobs <- method_from_call(nobs(fit))
+isS4(mle_nobs)
+ftype(mle_nobs)
+is(fit)
+is(fit, "mle")
+
+getGenerics()
+getClasses()
+
+showMethods()
+
+### 7.3.2 Defining classes and creating objects
+
+?className
+class?mle
+
+# S4 Class names use UpperCamelCase
+
+setClass("Person",
+         slots = list(name = "character", age = "numeric"))
+setClass("Employee",
+         slots = list(boss = "Person"),
+         contains = "Person")
+
+alice <- new("Person", name = "Alice", age = 40)
+john <- new("Employee", name = "John", age = 20, boss = alice)
+
+alice@age
+slot(john, "boss")
+
+setClass("RangedNumeric",
+         contains = "numeric",
+         slots = list(min = "numeric", max = "numeric"))
+rn <- new("RangedNumeric", 1:10, min = 1, max = 10)
+rn@min
+rn@.Data
+
+### 7.3.3 Creating new methods and generics
+
+setGeneric("union")
+setMethod("union",
+          c(x = "data.frame", y = "data.frame"),
+          function(x, y) {
+            unique(rbind(x, y))
+          }
+)
+
+setGeneric("myGeneric", function(x) {
+  standardGeneric("myGeneric")
+})
+
+### 7.3.4 Method dispatch
+
+# From methods: takes generic new and class names
+selectMethod("nobs", list("mle"))
+
+# From pryr: takes an unevaluated function call
+method_from_call(nobs(fit))
+
+### 7.3.5 Exercises
+
+#1
+search()
+generics <- getGenerics(where = search())
+is_gen_S4 <- vapply(generics@.Data,
+                    function(x) pryr::otype(get(x)) == "S4", logical(1))
+generics <- generics[is_gen_S4]
+generics
+sort(sapply(generics, function(x) length(methods(x))), decreasing = TRUE)[1]
+
+s4classes <- getClasses(where = .GlobalEnv, inherits = TRUE)
+s4classes
+S4Methods <- function(class) {
+  Methods <- showMethods(classes = class, printTo = FALSE) # notice the last setting
+  Methods <- Methods[grepl("^Function:", Methods)]
+  sapply(strsplit(Methods, " "), "[", 2)
+}
+s4class_methods <- lapply(s4classes, S4Methods)
+names(s4class_methods) <- s4classes
+sort(length(s4class_methods), decreasing = TRUE)[1]
+
+#2
+?Classes
+?setClass
+
+#3
+?setOldClass
+
+## 7.4 RC
+
+### 7.4.1 Defining classes and creating objects
+
+Account <- setRefClass("Account")
+Account$new()
+
+Account <- setRefClass("Account",
+                       fields = list(balance = "numeric"))
+a <- Account$new(balance = 100)
+
+a$balance
+a$balance <- 200
+a$balance
+a
+
+?setRefClass
+
+b <- a
+b$balance
+a$balance <- 0
+b$balance
+
+# just assigning and copy() are difference.
+
+c <- a$copy()
+c$balance
+
+a$balance <- 100
+c$balance
+
+Account <- setRefClass("Account",
+                       fields = list(balance = "numeric"),
+                       methods = list(
+                         withdraw = function(x) {
+                           balance <<- balance - x
+                         },
+                         deposit = function(x) {
+                           balance <<- balance + x
+                         }
+                      )
+)
+
+a <- Account$new(balance = 100)
+a$deposit(100)
+a$balance
+
+NoOverdraft <- setRefClass("NoOverdraft",
+                           contains = "Account",
+                           methods = list(
+                             withdraw = function(x) {
+                               if (balance < x) stop("Not enough money")
+                               balance <<- balance - x
+                             }
+                           )
+)
+
+accountJohn <- NoOverdraft$new(balance = 100)
+accountJohn$deposit(50)
+accountJohn$balance
+accountJohn$withdraw(200)
+
+### 7.4.2 Recognising objects and methods
+
+### 7.4.3 Method dispatch
+
+### 7.4.4 Exercises
+
+# 2
+
+classes <- getClasses(where = .GlobalEnv, inherits = TRUE)
+classes[unlist(lapply(classes, function(x) methods::extends(x, "envRefClass")))]
