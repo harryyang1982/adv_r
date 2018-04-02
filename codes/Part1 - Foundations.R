@@ -1644,3 +1644,112 @@ accountJohn$withdraw(200)
 
 classes <- getClasses(where = .GlobalEnv, inherits = TRUE)
 classes[unlist(lapply(classes, function(x) methods::extends(x, "envRefClass")))]
+
+# 8. Environments
+
+library(rlang)
+
+# Some API changes that haven't made it in rlang yet
+search_envs <- function() {
+  rlang:::new_environments(c(
+    list(global_env()),
+    head(env_parents(global_env()), -1)
+  ))
+}
+
+## 8.2 Environment Basics
+
+### 8.2.1 Basics
+
+e1 <- env(
+  a = FALSE,
+  b = "a",
+  c = 2.3,
+  d = 1:3
+)
+
+e1$d <- e1
+e1
+env_print(e1)
+env_names(e1)
+
+env_names(e1)
+# names(e1) # base R way
+
+### 8.2.2 Important environments
+
+identical(global_env(), current_env())
+
+# global_env() == current_env()
+
+### 8.2.3 Parents
+
+e2a <- env(d = 4, e = 5)
+e2b <- env(e2a, a = 1, b = 2, c = 3)
+
+env_parent(e2b)
+env_parent(e2a)
+
+e2c <- env(empty_env(), d = 4, e = 5)
+e2d <- env(e2c, a = 1, b = 2, c = 3)
+
+env_parent(e2c)
+env_parent(e2d)
+
+env_parent(empty_env())
+
+env_parents(e2b)
+env_parents(e2d)
+
+### 8.2.4 Getting and setting
+
+e3 <- env(x = 1, y = 2)
+e3$x
+e3$z <- 3
+e3[["z"]]
+# e3["z"]
+
+e3[[1]]
+e3[c("x", "y")]
+e3$xyz
+
+env_get(e3, "xyz")
+env_get(e3, "xyz", default = NA)
+
+env_poke(e3, "a", 100)
+e3$a
+
+env_bind(e3, a = 10, b = 20)
+env_names(e3)
+
+env_has(e3, "a")
+
+# unbinding
+e3$a <- NULL
+env_has(e3, "a")
+
+env_unbind(e3, "a")
+env_has(e3, "a")
+
+### 8.2.5 Finalizers
+
+### 8.2.6 Advanced bindings
+
+env_bind_exprs(current_env(), b = {Sys.sleep(1); 1})
+system.time(print(b))
+system.time(print(b))
+env_bind_fns(current_env(), z1 = function(val) runif(1))
+
+z1
+z1
+
+env_bind_fns(current_env(), z2 = function(val) {
+  if (missing(val)) {
+    2
+  } else {
+    stop("Don't touch z2!", call. = FALSE)
+  }
+})
+
+z2
+z2 <- 3
