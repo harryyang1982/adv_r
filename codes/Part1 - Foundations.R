@@ -1753,3 +1753,462 @@ env_bind_fns(current_env(), z2 = function(val) {
 
 z2
 z2 <- 3
+
+# old 8 Environments
+
+## 8.1 Environment basics
+
+e1 <- new.env()
+e1$a <- FALSE
+e1$b <- "a"
+e1$c <- 2.3
+e1$d <- 1:3
+
+search()
+as.environment("package:stats")
+
+e <- new.env()
+parent.env(e)
+
+ls(e)
+ls(e1)
+
+e$a <- 1
+e$b <- 2
+ls(e)
+e$a
+e1$a
+
+e$.a <- 2
+ls(e)
+ls(e, all.names = TRUE)
+
+str(e)
+ls.str(e)
+
+e$c <- 3
+e$c
+e[["c"]]
+get("c", envir = e)
+
+e <- new.env()
+e$a <- 1
+e$a <- NULL
+ls(e)
+
+rm("a", envir = e)
+ls(e)
+
+x <- 10
+exists("x", envir = e)
+exists("x", envir = e, inherits = FALSE)
+
+identical(globalenv(), environment())
+# globalenv() == environment()
+
+## 8.2 Recursing over environments
+
+library(pryr)
+x <- 5
+where("x")
+where("mean")
+
+where <- function(name, env = parent.frame()) {
+  if (identical(env, emptyenv())) {
+    # Base case
+    stop("Can't find ", name, call. = FALSE)
+    
+  } else if (exists(name, envir = env, inherits = FALSE)) {
+    # Success case
+    env
+  } else {
+    # Recursive case
+    where(name, parent.env(env))
+  }
+}
+
+where('mean')
+where('x')
+
+### Iteration vs. recursion
+
+is_empty <- function(x) identical(x, emptyenv())
+f2 <- function(..., env = parent.frame()) {
+  while(!is_empty(env)) {
+    if (success) {
+      # success case
+      return()
+    }
+    # inspect parent
+    env <- parent.env(env)
+  }
+}
+
+pryr::where
+
+where2 <- function(name, env = parent.frame()){
+  # we need to collect all environments where name has a binding
+  env_list <- list()
+  
+  # since our function will be recursive and env_list would be overwritten
+  # when it is inside the recursive function, we put it on the outside of
+  # the recursive function and concatenate every binding environment
+  # that we find via the `<<-` operator on its end.
+  # In the following we start by defining the recursive function:
+  where2.internal <- function(name, env = parent.frame()) {
+    stopifnot(is.character(name), length(name) == 1)
+    env <- pryr:::to_env(env) # note that we need to call to_env via pryr:::
+    
+    # when we reach the empty environment, we return all binding environments
+    # (if we found some) if we found no bindings, we give the same error message
+    # as pryr::where does
+    if (identical(env, emptyenv())) {
+      if (length(env_list) != 0){
+        return(env_list)
+      }
+      stop("Can't find ", name, call. = FALSE)
+    }
+    if (exists(name, env, inherits = FALSE)) {
+      # this is a case where we find a binding. the main difference to
+      # pryr::where is that we don't return immediately. Instead we save
+      # the binding environment to env_list and call where2.internal again
+      env_list <<- c(env_list, env)
+      where2.internal(name, parent.env(env))
+    } else {
+      where2.internal(name, parent.env(env))
+    }
+  }
+  
+  # as a last step we just call where2.internal() to start the recursion
+  where2.internal(name, env = parent.frame())
+}
+# where2("x")
+
+#2
+get2 <- function(name, env = parent.frame()) 
+{
+  stopifnot(is.character(name), length(name) == 1)
+  env <- pryr:::to_env(env)
+  if (identical(env, emptyenv())) {
+    stop("Can't find ", name, call. = FALSE)
+  }
+  if (exists(name, env, inherits = FALSE)) {
+    # we cancel env and substitute it with the following line, where we subset
+    # the environment (like a list) by the name of our object and return it
+    return(env[[name]])
+  }
+  else {
+    get2(name, parent.env(env))
+  }
+}
+get2("e", e)
+
+#3
+fget2 <- function(name, env = parent.frame()){
+  stopifnot(is.character(name), length(name) == 1)
+  env <- pryr:::to_env(env)
+  if (identical(env, emptyenv())) {
+    stop("Could not find function called ", name, call. = FALSE) # 
+  }
+  # here we add the is.function() check
+  if (exists(name, env, inherits = FALSE) && is.function(env[[name]])) {
+    return(env[[name]])
+  }
+  else {
+    fget2(name, parent.env(env))
+  }
+}
+fget2("mean")
+
+fget3 <- function(name, env = parent.frame(), inherits = TRUE){
+  stopifnot(is.character(name), length(name) == 1)
+  env <- pryr:::to_env(env)
+  if (identical(env, emptyenv())) {
+    stop("Could not find function called ", name, call. = FALSE) 
+  }
+  if (exists(name, env, inherits = FALSE) && is.function(env[[name]])) {
+    return(env[[name]])
+  }
+  # after the environment, which is specified in the env parameter, is checked
+  # we stop our function in case the new inherits parameter is set to FALSE
+  if(inherits == FALSE){
+    stop("Could not find function called ", name," within ",
+         environmentName(env),
+         call. = FALSE)
+  }
+  else {
+    fget3(name, parent.env(env))
+  }
+}
+
+exists2 <- function(name, env = parent.frame()){
+  stopifnot(is.character(name), length(name) == 1)
+  env <- pryr:::to_env(env)
+  name %in% ls(env, sorted = FALSE) # set sorted to FALSE for a small speedup
+}
+
+exists3 <- function(name, env = parent.frame()){
+  stopifnot(is.character(name), length(name) == 1)
+  env <- pryr:::to_env(env)
+  if (identical(env, emptyenv())) {
+    return(FALSE)
+  }
+  if (name %in% ls(env, sorted = FALSE)){
+    TRUE
+  }
+  else {
+    exists3(name, parent.env(env))
+  }
+}
+
+## 8.3 Function environments
+
+### 8.3.1 The enclosing environment
+
+y <- 1
+f <- function(x) x + y
+environment(f)
+
+### 8.3.2 Binding environments
+
+library(pryr)
+
+e <- new.env()
+e$g <- function() 1
+
+environment(sd)
+where("sd")
+
+x <- 1:10
+sd(x)
+var <- function(x, na.rm = TRUE) 100
+sd(x)
+
+### 8.3.3 Execution environments
+
+g <- function(x) {
+  if (!exists("a", inherits = FALSE)) {
+    message("Defining a")
+    a <- 1
+  } else {
+    a <- a + 1
+  }
+  a
+}
+g(10)
+g(10)
+
+h <- function(x) {
+  a <- 2
+  x + a
+}
+y <- h(1)
+
+plus <- function(x) {
+  function(y) x + y
+}
+plus_one <- plus(1)
+plus_one
+identical(parent.env(environment(plus_one)), environment(plus))
+
+### 8.3.4 Calling environments
+
+h <- function() {
+  x <- 10
+  function() {
+    x
+  }
+}
+i <- h()
+x <- 20
+i()
+
+f2 <- function() {
+  x <- 10
+  function() {
+    def <- get("x", environment())
+    cll <- get("x", parent.frame())
+    list(defined = def, called = cll)
+  }
+}
+g2 <- f2()
+x <- 20
+str(g2())
+
+x <- 0
+y <- 10
+f <- function() {
+  x <- 1
+  g()
+}
+g <- function() {
+  x <- 2
+  h()
+}
+h <- function() {
+  h <- 3
+  x + y
+}
+f()
+
+### 8.3.5 Exercises
+
+f1 <- function(x1) {
+  f2 <- function(x2) {
+    f3 <- function(x3) {
+      x1 + x2 + x3
+    }
+    f3(3)
+  }
+  f2(2)
+}
+f1(1)
+
+fstr <- function(object){
+  if(!is.function(object)){stop("fstr works only for functions")}
+  
+  object_str <- lazyeval::expr_text(object)
+  
+  flist <- list(ftype = pryr::ftype(object),
+                where = pryr::where(object_str),
+                enclosing_env = pryr::enclosing_env(object),
+                args = pryr::fun_args(object)
+  )
+  
+  return(flist)
+}
+
+## 8.4 Binding names to values
+
+# _abc <- 1
+
+# if <- 10
+?Reserved
+
+a + b <- 3
+`:)` <- "smile"
+`     ` <- "spaces"
+ls()
+`:)`
+`     `
+
+x <- 0
+f <- function() {
+  x <<- 1
+}
+f()
+x
+
+library(pryr)
+system.time(b %<d-% {Sys.sleep(1); 1})
+system.time(b)
+
+### Active binding
+
+x %<a-% runif(1)
+
+rm(x)
+
+### 8.4.1 Exercises
+
+#1
+rebind <- function(name, value, env = parent.frame()) {
+  if (identical(env, emptyenv())) {
+    stop("Can't find ", name, call. = FALSE)
+  } else if (exists(name, envir = env, inherits = FALSE)) {
+    assign(name, value, envir = env)
+  } else {
+    rebind(name, value, parent.env(env))
+  }
+}
+rebind("a", 10)
+a <- 5
+rebind("a", 10)
+a
+
+#2
+
+assign_non_existant <- function(x, value, pos = -1, envir = as.environment(pos),
+                                inherits = FALSE, immediate = TRUE) {
+  if(exists(x)){
+    message("No new assignment: '", x, "' already exists")
+    return(NULL)}
+  .Internal(assign(x, value, envir, inherits))
+}
+
+#3
+
+makeActiveBinding(sym = "test1",
+                  fun = function() function(x, y = sample(1:3, 1)){x^y},
+                  env = parent.frame())
+function(x, quiet = FALSE) {
+  if (is.environment(x)) {
+    x
+  } else if (is.list(x)) {
+    list2env(x)
+  } else if (is.function(x)) {
+    environment(x)
+  } else if (length(x) == 1 && is.character(x)) {
+    if (!quiet) message("Using environment ", x)
+    as.environment(x)
+  } else if (length(x) == 1 && is.numeric(x) && x > 0) {
+    if (!quiet) message("Using environment ", search()[x])
+    as.environment(x)
+  } else {
+    stop("Input can not be coerced to an environment", call. = FALSE)
+  }
+}
+
+special_assign <- function(x, value, atype, envir = pryr:::to_env(parent.frame())){
+  if(atype == "locked"){
+    assign(x, value, envir = envir, inherits)
+    lockBinding(sym = x, env = envir)
+  }
+  
+  if(atype == "active"){makeActiveBinding(sym = x, fun = value, env = envir)}
+  if(atype != "delayed"){stop("atype must be `locked`, `active` or `delayed`")}
+  delayedAssign(x, value, eval.env = environment(), assign.env = envir)
+}
+
+## 8.5 Explicit environments
+
+modify <- function(x) {
+  x$a <- 2
+  invisible()
+}
+
+x_l <- list()
+x_l$a <- 1
+modify(x_l)
+x_l$a
+
+x_e <- new.env()
+x_e$a <- 1
+modify(x_e)
+x_e$a
+
+x <- 1
+e1 <- new.env()
+get("x", envir = e1)
+
+e2 <- new.env(parent = emptyenv())
+get("x", envir = e2)
+
+### 8.5.1 Avoiding copies
+
+### 8.5.2 Package state
+
+my_env <- new.env(parent = emptyenv())
+my_env$a <- 1
+
+get_a <- function() {
+  my_env$a
+}
+set_a <- function(value) {
+  old <- my_env$a
+  my_env$a <- value
+  invisible(old)
+}
+
+### 8.5.3 As a hashmap
+
