@@ -2210,5 +2210,252 @@ set_a <- function(value) {
   invisible(old)
 }
 
-### 8.5.3 As a hashmap
+# 9 Debugging, condition handling, and defensive programming
 
+## 9.1 Debugging techniques
+
+## 9.2 Debugging tools
+
+# fail small chunks first
+
+### 9.2.1 Determining the sequence of calls
+
+f <- function(a) g(a)
+g <- function(b) h(b)
+h <- function(c) i(c)
+i <- function(d) "a" + d
+f(10)
+
+### 9.2.2 Browsing on error
+
+browseOnce <- function() {
+  old <- getOption("error")
+  function() {
+    options(error = old)
+    browser()
+  }
+}
+options(error = browseOnce())
+
+f <- function() stop("!")
+# Enters browser
+f()
+# Runs normally
+f()
+
+# In batch R process ----
+dump_and_quit <- function() {
+  # Save debugging info to file last.dump.rda
+  dump.frames(to.file = TRUE)
+  # Quit R with error status
+  q(status = 1)
+}
+options(error = dump_and_quit)
+debugger()
+options(error = NULL)
+
+### 9.2.3 Browsing arbitrary code
+
+### 9.2.4 The call stack: traceback(), where, and recover()
+
+### 9.2.5 Other types of failure
+
+message2error <- function(code) {
+  withCallingHandlers(code, message = function(e) stop(e))
+}
+
+f <- function() g()
+g <- function() message("Hi!")
+g()
+# Error in message("Hi!"): Hi!
+message2error(g())
+traceback()
+
+## 9.3 Condition handling
+
+### 9.3.1 Ignore errors with try
+
+f1 <- function(x) {
+  log(x)
+  10
+}
+f1("x")
+
+f2 <- function(x) {
+  try(log(x))
+  10
+}
+f2("a")
+
+try({
+  a <- 1
+  b <- "x"
+  a + b
+})
+
+success <- try(1 + 2)
+failure <- try("a" + "b")
+class(success)
+class(failure)
+
+elements <- list(1:10, c(-1, 10), c(TRUE, FALSE), letters)
+results <- lapply(elements, log)
+results <- lapply(elements, function(x) try(log(x)))
+results
+
+is.error <- function(x) inherits(x, "try-error")
+succeeded <- !sapply(results, is.error)
+str(results[succeeded])
+
+str(elements[!succeeded])
+
+default <- NULL
+try(default <- read.csv("possibly-bad-input.csv"), silent = TRUE)
+
+### 9.3.2 Handle conditions with tryCatch()
+
+show_condition <- function(code) {
+  tryCatch(code,
+           error = function(c) "error",
+           warning = function(c) "warning",
+           message = function(c) "message"
+           )
+}
+show_condition(stop("!"))
+show_condition(warning("?!"))
+show_condition(message("?"))
+
+# If no condition is captured, tryCatch returns the value of the input
+show_condition(10)
+
+try2 <- function(code, silent = FALSE) {
+  tryCatch(code, error = function(c) {
+    msg <- conditionMessage(c)
+    if(!silent) message(c)
+    invisible(structure(msg, class = "try-error"))
+  })
+}
+
+try2(1)
+try2(stop("Hi"))
+try2(stop("Hi"), silent = TRUE)
+
+read.csv2 <- function(file, ...) {
+  tryCatch(read.csv(file, ...), error = function(c) {
+    c$message <- paste0(c$message, " (in ", file, ")")
+    stop(c)
+  })
+}
+read.csv("code/dummy.csv")
+read.csv2("code/dummy.csv")
+
+# Don't let the user interrupt the code
+i <- 1
+while(i < 3) {
+  tryCatch({
+    Sys.sleep(0.5)
+    message("Try to escape")
+  }, interrupt = function(x) {
+    message("Try again!")
+    i <<- i + 1
+  })
+}
+
+### 9.3.3 withCallingHandlers()
+
+f <- function() stop("!")
+tryCatch(f(), error = function(e) 1)
+withCallingHandlers(f(), error = function(e) 1)
+
+f <- function() g()
+g <- function() h()
+h <- function() stop("!")
+
+tryCatch(f(), error = function(e) print(sys.calls()))
+withCallingHandlers(f(), error = function(e) print(sys.calls()))
+
+### 9.3.4 Custom signal classes
+
+condition <- function(subclass, message, call = sys.call(-1), ...) {
+  structure(
+    class = c(subclass, "condition"),
+    list(message = message, call = call),
+    ...
+  )
+}
+is.condition <- function(x) inherits(x, "condition")
+
+c <- condition(c("my_error", "error"), "This is an error")
+signalCondition(c)
+stop(c)
+warning(c)
+message(c)
+
+custom_stop <- function(subclass, message, call = sys.call(-1), ...) {
+  c <- condition(c(subclass, "error"), message, call = call, ...)
+  stop(c)
+}
+
+my_log <- function(x) {
+  if (!is.numeric(x))
+    custom_stop("invalid_class", "my_log() needs numeric input")
+  if (any(x < 0))
+    custom_stop("invalid_value", "my_log() needs positive inputs")
+  
+  log(x)
+}
+tryCatch(
+  my_log("a"),
+  invalid_class = function(c) "class",
+  invalid_value = function(c) "value"
+)
+
+tryCatch(custom_stop("my_error", "!"),
+         error = function(c) "error",
+         my_error = function(c) "my_error"
+)
+tryCatch(custom_stop("my_error", "!"),
+         my_error = function(c) "my_error",
+         error = function(c) "error"
+)
+
+### 9.3.5 Exercises
+
+message2error <- function(code) {
+  withCallingHandlers(code, message = function(e) stop(e))
+}
+message2error <- function(code) {
+  tryCatch(code, message = function(e) stop(e))
+}
+
+message2error(my_log("a"))
+
+## 9.4 Defensive programming
+
+col_means <- function(df) {
+  stopifnot(is.data.frame(df)) # added line
+  numeric <- vapply(df, is.numeric, logical(1)) #vapply and logical(1)
+  numeric_cols <- df[, numeric, drop = FALSE] #added drop = F
+  
+  data.frame(lapply(numeric_cols, mean))
+}
+col_means(mtcars)
+col_means(mtcars[, 0])
+col_means(mtcars[0, ])
+col_means(mtcars[, "mpg", drop = F])
+col_means(1:10)
+col_means(as.matrix(mtcars))
+col_means(as.list(mtcars))
+
+lag2 <- function(x, n = 1L) {
+  if (!is.numeric(n)) stop("n is not a numeric vector")
+  xlen <- length(x)
+  n <- min(xlen, n)
+  c(rep(NA, n), x[seq_len(xlen - n)])
+}
+
+lag2(v, 1) # -> correct
+lag2(v, 0) # -> correct
+lag2(v, 3) # -> correct
+lag2(v, 4) # -> NA NA NA; correct
+lag2(v, iris) # -> Error in lag2(v, iris) : n is not a numeric vector
