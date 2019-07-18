@@ -107,3 +107,57 @@ z <- f(x)
 # there's no copy here!
 
 untracemem(x)
+
+#2.3.3 Lists
+
+l1 <- list(1, 2, 3)
+
+l2 <- l1
+l2
+
+l2[[3]] <- 4
+
+ref(l1, l2) # shallow copy
+
+##2.3.4 Data frames
+d1 <- data.frame(x = c(1, 5, 6), 
+                 y = c(2, 4, 3))
+d1
+obj_addr(d1)
+
+d2 <- d1
+d2[, 2] <- d2[, 2] * 2
+
+d3 <- d1
+d3[1, ] <- d3[1, ] * 3
+d3
+obj_addr(d3)
+
+##2.3.5 Character vectors
+
+x <- c("a", "a", "abc", "d")
+x
+ref(x, character = TRUE)
+# ref(x)
+
+##2.3.6 Exercises
+
+#1
+cat(tracemem(1:10), "\n") #cause just prints out single values
+
+#2
+x <- c(1L, 2L, 3L)
+tracemem(x)
+
+x[[3]] <- 4 # cause is different not only value but also class
+
+#3
+a <- 1:10
+b <- list(a, a)
+c <- list(b, a, 1:10)
+c
+
+#4
+x <- list(1:10)
+x[[2]] <-  x
+x
